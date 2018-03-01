@@ -17,7 +17,6 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PathMeasure;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.os.Build;
 
@@ -83,8 +82,6 @@ class TSpanShadowNode extends TextShadowNode {
         pushGlyphContext();
         mCache = getLinePath(mContent, paint, canvas);
         popGlyphContext();
-
-        mCache.computeBounds(new RectF(), true);
 
         return mCache;
     }

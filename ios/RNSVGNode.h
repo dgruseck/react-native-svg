@@ -32,21 +32,23 @@ extern CGFloat const RNSVG_DEFAULT_FONT_SIZE;
 @property (nonatomic, strong) NSString *clipPath;
 @property (nonatomic, assign) BOOL responsible;
 @property (nonatomic, assign) CGAffineTransform matrix;
+@property (nonatomic, assign) CGAffineTransform invmatrix;
 @property (nonatomic, assign) BOOL active;
+@property (nonatomic, assign) CGPathRef path;
 
 - (void)invalidate;
 
 - (RNSVGGroup *)getTextRoot;
 - (RNSVGGroup *)getParentTextRoot;
 
-- (void)renderTo:(CGContextRef)context;
+- (void)renderTo:(CGContextRef)context rect:(CGRect)rect;
 
 /**
  * renderTo will take opacity into account and draw renderLayerTo off-screen if there is opacity
  * specified, then composite that onto the context. renderLayerTo always draws at opacity=1.
  * @abstract
  */
-- (void)renderLayerTo:(CGContextRef)context;
+- (void)renderLayerTo:(CGContextRef)context rect:(CGRect)rect;
 
 /**
  * get clipPath from cache
@@ -67,11 +69,6 @@ extern CGFloat const RNSVG_DEFAULT_FONT_SIZE;
  * getPath will return the path inside node as a ClipPath.
  */
 - (CGPathRef)getPath:(CGContextRef) context;
-
-/**
- * run hitTest
- */
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event withTransform:(CGAffineTransform)transfrom;
 
 /**
  * get RNSVGSvgView which ownes current RNSVGNode
@@ -103,6 +100,6 @@ extern CGFloat const RNSVG_DEFAULT_FONT_SIZE;
 
 - (void)endTransparencyLayer:(CGContextRef)context;
 
-- (void)traverseSubviews:(BOOL (^)(__kindof RNSVGNode *node))block;
+- (void)traverseSubviews:(BOOL (^)(__kindof UIView *node))block;
 
 @end

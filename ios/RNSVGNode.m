@@ -54,6 +54,10 @@ CGFloat const RNSVG_DEFAULT_FONT_SIZE = 12;
 {
     id<RNSVGContainer> container = (id<RNSVGContainer>)self.superview;
     [container invalidate];
+    if (_path) {
+        CGPathRelease(_path);
+        _path = nil;
+    }
 }
 
 - (RNSVGGroup *)getTextRoot
@@ -130,8 +134,10 @@ CGFloat const RNSVG_DEFAULT_FONT_SIZE = 12;
     if (CGAffineTransformEqualToTransform(matrix, _matrix)) {
         return;
     }
-    [self invalidate];
     _matrix = matrix;
+    _invmatrix = CGAffineTransformInvert(matrix);
+    id<RNSVGContainer> container = (id<RNSVGContainer>)self.superview;
+    [container invalidate];
 }
 
 - (void)setClipPath:(NSString *)clipPath
@@ -159,7 +165,7 @@ CGFloat const RNSVG_DEFAULT_FONT_SIZE = 12;
     }
 }
 
-- (void)renderTo:(CGContextRef)context
+- (void)renderTo:(CGContextRef)context rect:(CGRect)rect
 {
     // abstract
 }
@@ -171,8 +177,7 @@ CGFloat const RNSVG_DEFAULT_FONT_SIZE = 12;
 
 - (CGPathRef)getClipPath:(CGContextRef)context
 {
-    if (self.clipPath) {
-        CGPathRelease(_cachedClipPath);
+    if (self.clipPath && !_cachedClipPath) {
         _cachedClipPath = CGPathRetain([[[self getSvgView] getDefinedClipPath:self.clipPath] getPath:context]);
     }
 
@@ -199,7 +204,7 @@ CGFloat const RNSVG_DEFAULT_FONT_SIZE = 12;
     return nil;
 }
 
-- (void)renderLayerTo:(CGContextRef)context
+- (void)renderLayerTo:(CGContextRef)context rect:(CGRect)rect
 {
     // abstract
 }
@@ -208,12 +213,6 @@ CGFloat const RNSVG_DEFAULT_FONT_SIZE = 12;
 - (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
 {
 
-    // abstract
-    return nil;
-}
-
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event withTransform:(CGAffineTransform)transfrom
-{
     // abstract
     return nil;
 }
@@ -310,13 +309,11 @@ CGFloat const RNSVG_DEFAULT_FONT_SIZE = 12;
     }
 }
 
-- (void)traverseSubviews:(BOOL (^)(__kindof RNSVGNode *node))block
+- (void)traverseSubviews:(BOOL (^)(__kindof UIView *node))block
 {
-    for (RNSVGNode *node in self.subviews) {
-        if ([node isKindOfClass:[RNSVGNode class]]) {
-            if (!block(node)) {
-                break;
-            }
+    for (UIView *node in self.subviews) {
+        if (!block(node)) {
+            break;
         }
     }
 }

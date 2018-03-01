@@ -10,28 +10,30 @@
 package com.horcrux.svg;
 
 import android.annotation.SuppressLint;
-import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Point;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.TextureView;
 import android.view.View;
+import android.view.ViewGroup;
 
 import com.facebook.react.ReactRootView;
 import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.uimanager.ReactShadowNodeImpl;
 import com.facebook.react.uimanager.UIManagerModule;
+import com.facebook.react.uimanager.events.EventDispatcher;
 import com.facebook.react.uimanager.events.TouchEvent;
 import com.facebook.react.uimanager.events.TouchEventCoalescingKeyHelper;
 import com.facebook.react.uimanager.events.TouchEventType;
-import com.facebook.react.uimanager.events.EventDispatcher;
-
-import javax.annotation.Nullable;
+import com.facebook.react.views.view.ReactViewGroup;
 
 /**
- * Custom {@link View} implementation that draws an RNSVGSvg React view and its \childrn.
+ * Custom {@link View} implementation that draws an RNSVGSvg React view and its children.
  */
 @SuppressLint("ViewConstructor")
-public class SvgView extends View {
+public class SvgView extends ViewGroup {
+    @SuppressWarnings("unused")
     public enum Events {
         @SuppressWarnings("unused")
         EVENT_DATA_URL("onDataURL");
@@ -49,7 +51,7 @@ public class SvgView extends View {
         }
     }
 
-    private @Nullable Bitmap mBitmap;
+    private TextureView mTextureView;
     private final EventDispatcher mEventDispatcher;
     private long mGestureStartTime = TouchEvent.UNSET;
     private int mTargetTag;
@@ -59,29 +61,33 @@ public class SvgView extends View {
 
     public SvgView(ReactContext reactContext) {
         super(reactContext);
+        mTextureView = new TextureView(reactContext);
+        mTextureView.setOpaque(false);
+        addView(mTextureView);
         mEventDispatcher = reactContext.getNativeModule(UIManagerModule.class).getEventDispatcher();
+    }
+
+    /**
+     * Sets the {@link TextureView.SurfaceTextureListener} used to listen to surface
+     * texture events.
+     *
+     * @see TextureView#getSurfaceTextureListener
+     * @see TextureView.SurfaceTextureListener
+     */
+    public void setSurfaceTextureListener(TextureView.SurfaceTextureListener listener) {
+        mTextureView.setSurfaceTextureListener(listener);
+    }
+
+    @Override
+    public final void draw(Canvas canvas) {
+        super.draw(canvas);
+        mTextureView.draw(canvas);
     }
 
     @Override
     public void setId(int id) {
         super.setId(id);
         SvgViewManager.setSvgView(this);
-    }
-
-    public void setBitmap(Bitmap bitmap) {
-        if (mBitmap != null) {
-            mBitmap.recycle();
-        }
-        mBitmap = bitmap;
-        invalidate();
-    }
-
-    @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        if (mBitmap != null) {
-            canvas.drawBitmap(mBitmap, 0, 0, null);
-        }
     }
 
     private SvgViewShadowNode getShadowNode() {
@@ -98,6 +104,33 @@ public class SvgView extends View {
         }
 
         return super.dispatchTouchEvent(ev);
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        ReactShadowNodeImpl node = getShadowNode();
+        for (int i = 0; i < this.getChildCount(); i++) {
+            View child = this.getChildAt(i);
+            if (child instanceof TextureView) {
+                child.layout(l, t, r , b);
+            } else if (child instanceof ReactViewGroup) {
+                int id = child.getId();
+                for (int j = 0; j < node.getChildCount(); j++) {
+                    ReactShadowNodeImpl nodeChild = node.getChildAt(j);
+                    if (nodeChild.getReactTag() != id) {
+                        continue;
+                    }
+
+                    float x = nodeChild.getLayoutX();
+                    float y = nodeChild.getLayoutY();
+                    float nr = x + nodeChild.getLayoutWidth();
+                    float nb = y + nodeChild.getLayoutHeight();
+
+                    child.layout(Math.round(x), Math.round(y), Math.round(nr), Math.round(nb));
+                    break;
+                }
+            }
+        }
     }
 
     private int getAbsoluteLeft(View view) {
